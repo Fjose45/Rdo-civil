@@ -1044,9 +1044,7 @@
     </button>
     
     <!-- Botão de debug PWA -->
-    <button id="debugBtn" style="position: fixed; bottom: 30px; left: 100px; width: 60px; height: 60px; border-radius: 50%; background: #6b7280; color: white; display: flex; align-items: center; justify-content: center; z-index: 1000; border: none; cursor: pointer;">
-        <i class="fas fa-bug"></i>
-    </button>
+    <button id="debugBtn" style="display:none;"><i class="fas fa-bug"></i></button>
 
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -3311,6 +3309,60 @@
             firstTab.classList.add('active');
             document.getElementById('tab-dados-gerais').classList.remove('hidden');
         }
+
+        // Botão de debug PWA
+        // O botão só aparece ao pressionar Ctrl+Shift+D
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+                const btn = document.getElementById('debugBtn');
+                btn.style.display = 'flex';
+                btn.style.position = 'fixed';
+                btn.style.bottom = '10px';
+                btn.style.right = '10px';
+                btn.style.width = '40px';
+                btn.style.height = '40px';
+                btn.style.borderRadius = '50%';
+                btn.style.background = 'rgba(55,65,81,0.5)';
+                btn.style.color = 'white';
+                btn.style.alignItems = 'center';
+                btn.style.justifyContent = 'center';
+                btn.style.zIndex = 1000;
+                btn.style.border = 'none';
+                btn.style.cursor = 'pointer';
+                btn.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    btn.style.display = 'none';
+                }, 10000);
+            }
+        });
+        document.getElementById('debugBtn').addEventListener('click', () => {
+            const debugInfo = {
+                'Online': navigator.onLine,
+                'Display Mode': window.matchMedia('(display-mode: standalone)').matches ? 'Standalone' : 'Browser',
+                'Service Worker': 'serviceWorker' in navigator ? 'Suportado' : 'Não suportado',
+                'Cache': 'caches' in window ? 'Suportado' : 'Não suportado',
+                'URL': window.location.href,
+                'User Agent': navigator.userAgent
+            };
+            console.log('=== DEBUG PWA ===');
+            Object.entries(debugInfo).forEach(([key, value]) => {
+                console.log(`${key}: ${value}`);
+            });
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    console.log('Service Workers registrados:', registrations.length);
+                    registrations.forEach((reg, index) => {
+                        console.log(`SW ${index + 1}:`, reg);
+                    });
+                });
+            }
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    console.log('Caches disponíveis:', cacheNames);
+                });
+            }
+            alert('Informações de debug enviadas para o console. Pressione F12 para ver.');
+        });
     </script>
 </body>
 </html>
