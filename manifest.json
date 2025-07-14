@@ -2,12 +2,12 @@
   "name": "RDO - Relatório Diário de Obra",
   "short_name": "RDO",
   "description": "Aplicativo para geração de Relatórios Diários de Obra.",
-  "start_url": "/RDO_pwa.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#3b82f6",
   "theme_color": "#3b82f6",
   "orientation": "portrait",
-  "scope": "/",
+  "scope": "./",
   "lang": "pt-BR",
   "icons": [
     {
