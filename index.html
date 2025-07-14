@@ -1042,6 +1042,11 @@
     <button id="installBtn" class="hidden">
         <i class="fas fa-download"></i>
     </button>
+    
+    <!-- Botão de debug PWA -->
+    <button id="debugBtn" style="position: fixed; bottom: 30px; left: 100px; width: 60px; height: 60px; border-radius: 50%; background: #6b7280; color: white; display: flex; align-items: center; justify-content: center; z-index: 1000; border: none; cursor: pointer;">
+        <i class="fas fa-bug"></i>
+    </button>
 
     <div class="container mx-auto px-4 py-8 max-w-6xl">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -1561,17 +1566,6 @@
                         `// Nome do cache
                         const CACHE_NAME = 'rdo-app-v1';
 
-                        // Recursos para armazenar em cache
-                        const urlsToCache = [
-                            './',
-                            './index.html',
-                            './manifest.json',
-                            './engrenagem-192.png',
-                            './engrenagem-256.png',
-                            './engrenagem-384.png',
-                            './engrenagem-512.png'
-                        ];
-
                         // Instalação do Service Worker
                         self.addEventListener('install', event => {
                             console.log('Service Worker instalando...');
@@ -1579,7 +1573,8 @@
                                 caches.open(CACHE_NAME)
                                     .then(cache => {
                                         console.log('Cache aberto');
-                                        return cache.addAll(urlsToCache);
+                                        // Cache apenas a página principal
+                                        return cache.add('./index.html');
                                     })
                                     .catch(error => {
                                         console.error('Erro ao instalar cache:', error);
@@ -1590,12 +1585,11 @@
                         // Ativar o Service Worker
                         self.addEventListener('activate', event => {
                             console.log('Service Worker ativando...');
-                            const cacheWhitelist = [CACHE_NAME];
                             event.waitUntil(
                                 caches.keys().then(cacheNames => {
                                     return Promise.all(
                                         cacheNames.map(cacheName => {
-                                            if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                            if (cacheName !== CACHE_NAME) {
                                                 console.log('Removendo cache antigo:', cacheName);
                                                 return caches.delete(cacheName);
                                             }
@@ -1608,50 +1602,20 @@
                         // Interceptar requisições
                         self.addEventListener('fetch', event => {
                             const request = event.request;
-                            const url = new URL(request.url);
                             
-                            // Ignorar requisições para APIs externas
-                            if (url.origin !== location.origin) {
+                            // Para navegação, sempre retornar a página principal do cache
+                            if (request.mode === 'navigate') {
+                                event.respondWith(
+                                    caches.match('./index.html')
+                                );
                                 return;
                             }
                             
+                            // Para outros recursos, tentar rede primeiro, depois cache
                             event.respondWith(
-                                caches.match(request)
-                                    .then(cachedResponse => {
-                                        if (cachedResponse) {
-                                            console.log('Retornando do cache:', request.url);
-                                            return cachedResponse;
-                                        }
-                                        
-                                        console.log('Buscando na rede:', request.url);
-                                        return fetch(request)
-                                            .then(response => {
-                                                // Só cachear respostas válidas
-                                                if (!response || response.status !== 200) {
-                                                    return response;
-                                                }
-                                                
-                                                // Clonar a resposta para cache
-                                                const responseToCache = response.clone();
-                                                caches.open(CACHE_NAME)
-                                                    .then(cache => {
-                                                        cache.put(request, responseToCache);
-                                                    });
-                                                
-                                                return response;
-                                            })
-                                            .catch(error => {
-                                                console.error('Erro na requisição:', error);
-                                                // Para páginas HTML, retornar a página principal
-                                                if (request.destination === 'document') {
-                                                    return caches.match('./index.html');
-                                                }
-                                                // Para outros recursos, retornar erro 404
-                                                return new Response('Recurso não encontrado', {
-                                                    status: 404,
-                                                    statusText: 'Not Found'
-                                                });
-                                            });
+                                fetch(request)
+                                    .catch(() => {
+                                        return caches.match(request);
                                     })
                             );
                         });`
@@ -1682,25 +1646,26 @@
         
         // Após o registro do service worker, forçar atualização se necessário
         if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) {
-              registration.update();
-            }
-          });
-          
-          // Limpar caches antigos se necessário
+          // Limpar todos os caches antigos primeiro
           if ('caches' in window) {
             caches.keys().then(function(cacheNames) {
               return Promise.all(
                 cacheNames.map(function(cacheName) {
-                  if (cacheName !== 'rdo-app-v1') {
-                    console.log('Removendo cache antigo:', cacheName);
-                    return caches.delete(cacheName);
-                  }
+                  console.log('Removendo cache antigo:', cacheName);
+                  return caches.delete(cacheName);
                 })
               );
             });
           }
+          
+          // Forçar atualização de todos os service workers
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister().then(() => {
+                console.log('Service Worker antigo removido');
+              });
+            }
+          });
         }
         
         // Botão de instalação
@@ -1761,6 +1726,42 @@
                 document.body.classList.add('installed');
                 installBtn.classList.add('hidden');
             }
+        });
+        
+        // Botão de debug PWA
+        document.getElementById('debugBtn').addEventListener('click', () => {
+            const debugInfo = {
+                'Online': navigator.onLine,
+                'Display Mode': window.matchMedia('(display-mode: standalone)').matches ? 'Standalone' : 'Browser',
+                'Service Worker': 'serviceWorker' in navigator ? 'Suportado' : 'Não suportado',
+                'Cache': 'caches' in window ? 'Suportado' : 'Não suportado',
+                'URL': window.location.href,
+                'User Agent': navigator.userAgent
+            };
+            
+            console.log('=== DEBUG PWA ===');
+            Object.entries(debugInfo).forEach(([key, value]) => {
+                console.log(`${key}: ${value}`);
+            });
+            
+            // Verificar service workers registrados
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    console.log('Service Workers registrados:', registrations.length);
+                    registrations.forEach((reg, index) => {
+                        console.log(`SW ${index + 1}:`, reg);
+                    });
+                });
+            }
+            
+            // Verificar caches
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    console.log('Caches disponíveis:', cacheNames);
+                });
+            }
+            
+            alert('Informações de debug enviadas para o console. Pressione F12 para ver.');
         });
         
         // ===================================================
