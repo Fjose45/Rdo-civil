@@ -1,0 +1,3262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="description" content="Aplicativo para geração de Relatórios Diários de Obra">
+    <title>RDO - Relatório Diário de Obra</title>
+    
+    <!-- Manifesto PWA -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Ícone principal para navegadores -->
+    <link rel="icon" type="image/png" sizes="192x192" href="engrenagem-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="engrenagem-192.png">
+    <link rel="apple-touch-icon" sizes="256x256" href="engrenagem-256.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="engrenagem-384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="engrenagem-512.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="RDO">
+    <meta name="msapplication-TileColor" content="#3b82f6">
+    <meta name="msapplication-TileImage" content="engrenagem-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script>
+        window.jspdf = window.jspdf || {};
+    </script>
+    
+    <style>
+        body {
+            background-image: url('https://plus.unsplash.com/premium_photo-1681989490797-dbe51c438b61?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8Y29uc3RydSVDMyVBNyVDMyVBMXxlbnwwfHwwfHww%3D%3D');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            background-color: rgba(0, 0, 0, 0.3);
+            background-blend-mode: overlay;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body > div:first-child {
+            flex: 1;
+        }
+
+        /* Card styles */
+        .card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+            background-size: 200% 100%;
+            animation: gradientMove 3s linear infinite;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.2);
+        }
+
+        .card:hover::before {
+            animation: gradientMove 1.5s linear infinite;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Section titles inside cards */
+        .section-title {
+            color: #1e293b;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+            border-radius: 2px;
+        }
+
+        /* Table styles inside cards */
+        .scrollable-table {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .scrollable-table table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .scrollable-table th {
+            background: rgba(59, 130, 246, 0.1);
+            color: #1e293b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .scrollable-table td, .scrollable-table th {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(203, 213, 225, 0.3);
+        }
+
+        .scrollable-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .scrollable-table tr:hover td {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        /* List styles inside cards */
+        .space-y-3 > div {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .space-y-3 > div:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(31, 38, 135, 0.1);
+        }
+
+        /* Photo container inside cards */
+        #photosContainer {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 1rem;
+        }
+
+        .photo-item {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(31, 38, 135, 0.15);
+        }
+
+        .weather-option {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            border-radius: 0.5rem;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+
+        .weather-option:hover {
+            background-color: #f1f5f9;
+        }
+
+        .weather-option.selected {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .btn {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #ff00ff);
+            z-index: -2;
+            animation: glowing 3s linear infinite;
+            background-size: 200% 200%;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: inherit;
+            z-index: -1;
+            border-radius: inherit;
+        }
+
+        @keyframes glowing {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(1px) scale(0.98);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+            color: white;
+            text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b, #334155);
+            color: white;
+            text-shadow: 0 0 10px rgba(100, 116, 139, 0.5);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #475569, #1e293b);
+            box-shadow: 0 0 20px rgba(100, 116, 139, 0.6);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #047857);
+            color: white;
+            text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #059669, #065f46);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+        }
+
+        /* Efeito de brilho ao passar o mouse */
+        .btn i {
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover i {
+            transform: scale(1.2);
+            text-shadow: 0 0 10px currentColor;
+        }
+
+        /* Animação de pulso para botões importantes */
+        .btn-primary, .btn-success {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        .photo-thumbnail-container {
+            width: 100px;
+            height: 100px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .photo-thumbnail-container:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transform: scale(1.02);
+        }
+
+        .photo-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        /* Logo placeholder styles */
+        .logo-placeholder {
+            width: 180px;
+            height: 70px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            margin-top: 1.5rem;
+        }
+
+        .logo-placeholder:hover {
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .logo-placeholder i {
+            font-size: 2rem;
+            color: #94a3b8;
+        }
+
+        .logo-placeholder img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Company info styles */
+        #companyInfo {
+            margin-top: 1.5rem;
+            min-height: 70px;
+            resize: none;
+        }
+
+        .signature-pad {
+            border-radius: 0.5rem;
+            min-height: 100px;
+            transition: all 0.2s;
+            background-color: white;
+            cursor: crosshair;
+        }
+
+        .signature-pad:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        /* ===== PDF Styles ===== */
+        #pdfContent {
+            display: block;
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 210mm;
+            min-height: 297mm;
+            background-color: white;
+            color: black;
+            font-family: 'Arial', sans-serif;
+            box-sizing: border-box;
+            font-size: 10pt;
+            padding: 20mm;
+            line-height: 1.5;
+            margin: 0;
+            border: none;
+        }
+
+        .pdf-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+        }
+
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        .pdf-header-left {
+            flex: 1;
+            text-align: left;
+        }
+
+        .pdf-header-right {
+            flex: 1;
+            text-align: right;
+        }
+
+        .pdf-header h1 {
+            font-size: 18pt;
+            margin: 0 0 10px 0;
+            color: #1e40af;
+            text-transform: uppercase;
+        }
+
+        .pdf-header .company-info {
+            font-size: 10pt;
+            color: #475569;
+            margin: 0;
+        }
+
+        .pdf-header .logo-placeholder-pdf {
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .pdf-header .logo-placeholder-pdf img {
+            max-height: 70px;
+            max-width: 180px;
+        }
+
+        .pdf-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+
+        .pdf-section h2 {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #1e40af;
+            border-bottom: 2px solid #bfdbfe;
+            padding-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            font-size: 10pt;
+            background-color: white;
+        }
+
+        .pdf-table th, .pdf-table td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+            background-color: white;
+        }
+
+        .pdf-table th {
+            background-color: #3b82f6 !important; /* Azul mais suave */
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9pt;
+        }
+
+        .pdf-table td {
+            color: #334155;
+            background-color: #ffffff;
+        }
+
+        .pdf-table tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+
+        .pdf-table tr:hover td {
+            background-color: #f1f5f9;
+        }
+
+        .pdf-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin-top: 5px;
+        }
+
+        .pdf-list li {
+            margin-bottom: 6px;
+            position: relative;
+            padding-left: 18px;
+        }
+
+        .pdf-list li:before {
+            content: "•";
+            color: #3b82f6;
+            position: absolute;
+            left: 5px;
+            font-weight: bold;
+        }
+
+        .pdf-photo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .pdf-photo-item {
+            break-inside: avoid;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8fafc;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .pdf-photo-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 3px;
+            margin-bottom: 8px;
+        }
+
+        .pdf-photo-item p {
+            font-size: 9pt;
+            text-align: left;
+            color: #475569;
+            line-height: 1.4;
+            flex-grow: 1;
+        }
+
+        .pdf-signatures {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            gap: 20px;
+        }
+
+        .pdf-signature {
+            text-align: center;
+            flex: 1;
+            padding: 0 15px;
+        }
+
+        .pdf-signature img {
+            max-height: 80px;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+            object-fit: contain;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .pdf-signature-placeholder {
+            height: 80px;
+            width: 100%;
+            border-bottom: 1px dashed #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .pdf-signature-line {
+            border-top: 1px solid #94a3b8;
+            margin-top: 15px;
+            padding-top: 8px;
+            font-size: 10pt;
+            color: #334155;
+        }
+
+        .pdf-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 20px;
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            font-size: 9pt;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Floating button */
+        .floating-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .floating-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+        }
+
+        /* Animation for adding items */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Table hover effect */
+        tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* Form inputs */
+        input, select, textarea {
+            background: #f8fafc;
+            border: 2px solid #3b82f6;
+            color: #1e293b;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 5px #3b82f6;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #94a3b8;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 15px #60a5fa;
+            animation: neonPulse 1.5s infinite;
+        }
+
+        @keyframes neonPulse {
+            0% { box-shadow: 0 0 5px #60a5fa, 0 0 10px #60a5fa; }
+            50% { box-shadow: 0 0 10px #60a5fa, 0 0 20px #60a5fa; }
+            100% { box-shadow: 0 0 5px #60a5fa, 0 0 10px #60a5fa; }
+        }
+
+        input:hover, select:hover, textarea:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+        }
+
+        select {
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, #3b82f6 50%),
+                            linear-gradient(135deg, #3b82f6 50%, transparent 50%);
+            background-position: calc(100% - 20px) calc(1em + 2px),
+                               calc(100% - 15px) calc(1em + 2px);
+            background-size: 5px 5px,
+                           5px 5px;
+            background-repeat: no-repeat;
+            padding-right: 2.5rem;
+        }
+
+        select:hover {
+            background-image: linear-gradient(45deg, transparent 50%, #60a5fa 50%),
+                            linear-gradient(135deg, #60a5fa 50%, transparent 50%);
+        }
+
+        @keyframes inputGlow {
+            0% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); }
+            100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.4); }
+        }
+
+        /* Estilo para inputs numéricos */
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Estilo para inputs de data */
+        input[type="date"] {
+            color-scheme: dark;
+        }
+
+        /* Estilo para inputs de arquivo */
+        input[type="file"] {
+            background: transparent;
+            border: 2px dashed rgba(59, 130, 246, 0.3);
+            padding: 1rem;
+            cursor: pointer;
+        }
+
+        input[type="file"]:hover {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        /* Estilo para textarea */
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Estilo para inputs desabilitados */
+        input:disabled, select:disabled, textarea:disabled {
+            background: rgba(30, 41, 59, 0.5);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* Estilo para inputs com erro */
+        input.error, select.error, textarea.error {
+            border-color: #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Small screens adjustments */
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .logo-placeholder {
+                width: 80px;
+                height: 80px;
+                margin-bottom: 1rem;
+            }
+            
+            .pdf-photo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .photo-item {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .photo-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .photo-popup img {
+            max-width: 90%;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+
+        .photo-popup-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+        }
+
+        /* Footer styles */
+        .app-footer {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            text-align: center;
+            color: #1e293b;
+            font-size: 0.9rem;
+            position: relative;
+            margin-top: 2rem;
+            box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+            background-size: 200% 100%;
+            animation: gradientMove 3s linear infinite;
+        }
+
+        .app-footer span {
+            font-weight: 500;
+            color: #3b82f6;
+        }
+
+        .app-footer .location {
+            color: #64748b;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Ajuste do container principal */
+        .container {
+            min-height: calc(100vh - 80px);
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 2rem;
+        }
+
+        .main-content {
+            flex: 1;
+        }
+
+        /* Estilos para as abas */
+        .tab-btn {
+            position: relative;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: #ffffff;
+            font-weight: 500;
+            padding: 1rem;
+            border: none;
+            margin-right: 1rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #fbbf24, #d97706);
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+        }
+
+        .tab-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            z-index: 1;
+        }
+
+        .tab-btn.active {
+            color: #1e40af;
+            font-weight: 600;
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .tab-btn.active i {
+            color: #1e40af;
+            text-shadow: 0 0 10px rgba(30, 64, 175, 0.5);
+        }
+
+        .tab-btn:hover {
+            color: #ffffff;
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+        }
+
+        .tab-btn i {
+            font-size: 1.25rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .tab-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsividade para abas */
+        @media (max-width: 768px) {
+            #tabsNav {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            .tab-btn {
+                font-size: 0.75rem;
+                padding: 0.5rem 0.75rem;
+            }
+        }
+        
+        /* ===== PWA Styles ===== */
+        /* Botão de instalação PWA */
+        #installBtn {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #047857);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        #installBtn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+        
+        #installBtn i {
+            font-size: 1.5rem;
+        }
+        
+        /* Mensagem offline */
+        #offlineAlert {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #ef4444;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            z-index: 2000;
+            display: none;
+        }
+        
+        /* Estilo para quando o app está instalado */
+        body.installed #installBtn {
+            display: none;
+        }
+        
+        /* Instalação bem-sucedida */
+        .install-success {
+            position: fixed;
+            bottom: 100px;
+            left: 30px;
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: slideIn 0.5s ease-out;
+            display: flex;
+            align-items: center;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+    
+    <!-- Favicon Capacete Amarelo -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath fill='%23FFD700' d='M256 16C123.45 16 16 123.45 16 256s107.45 240 240 240 240-107.45 240-240S388.55 16 256 16zm0 422.4c-100.5 0-182.4-81.9-182.4-182.4S155.5 73.6 256 73.6s182.4 81.9 182.4 182.4-81.9 182.4-182.4 182.4zm89.6-297.6H166.4c-12.8 0-22.4 9.6-22.4 22.4v89.6c0 61.44 49.92 111.36 111.36 111.36h1.28c61.44 0 111.36-49.92 111.36-111.36v-89.6c0-12.8-9.6-22.4-22.4-22.4zm-89.6 32c30.72 0 55.68 24.96 55.68 55.68v22.4H200.32v-22.4c0-30.72 24.96-55.68 55.68-55.68z'/%3E%3C/svg%3E">
+</head>
+<body class="font-sans text-slate-800">
+    <!-- Alerta offline -->
+    <div id="offlineAlert">
+        <i class="fas fa-wifi-slash mr-2"></i> Você está offline. Algumas funcionalidades podem estar limitadas.
+    </div>
+    
+    <!-- Botão de instalação PWA -->
+    <button id="installBtn" class="hidden">
+        <i class="fas fa-download"></i>
+    </button>
+
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <h1 class="text-3xl md:text-4xl font-bold text-white px-6 py-3 rounded-lg shadow-lg bg-gradient-to-r from-blue-600 to-blue-800 flex items-center">
+                <i class="fas fa-hard-hat mr-3"></i>
+                Relatório Diário de Obra - RDO
+            </h1>
+            <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow">
+                <span class="text-sm text-slate-600">Nº do RDO:</span>
+                <span class="font-semibold text-blue-600" id="rdoNumberPreview">RDO-2025-001</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Content com Abas -->
+            <div class="col-span-2">
+                <!-- Navegação de Abas -->
+                <div class="mb-6">
+                    <nav class="flex space-x-8" id="tabsNav">
+                        <button class="tab-btn" data-tab="dados-gerais" title="Dados Gerais">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="condicao-climatica" title="Condição Climática">
+                            <i class="fas fa-cloud-sun"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="mao-de-obra" title="Mão de Obra">
+                            <i class="fas fa-hard-hat"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="equipamentos" title="Equipamentos">
+                            <i class="fas fa-tools"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="tarefas-ocorrencias" title="Tarefas & Ocorrências">
+                            <i class="fas fa-tasks"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="relatorio-fotografico" title="Relatório Fotográfico">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                        <button class="tab-btn" data-tab="assinaturas" title="Assinaturas">
+                            <i class="fas fa-signature"></i>
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Conteúdo das Abas -->
+                <div id="tab-dados-gerais" class="tab-content">
+                    <!-- Company Info Card -->
+                    <div class="card p-6">
+                        <div class="flex flex-col lg:flex-row gap-6 items-center mb-6">
+                            <div class="relative">
+                                <div class="logo-placeholder" id="logoUpload">
+                                    <i class="fas fa-camera"></i>
+                                    <input type="file" id="logoInput" accept="image/*" class="hidden"/>
+                                </div>
+                                <button class="remove-logo-btn hidden absolute top-0 right-0 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center transform translate-x-1 -translate-y-1 shadow" id="removeLogoBtn">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                            <div class="flex-1 w-full">
+                                <textarea id="companyInfo" class="w-full p-3 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" rows="3" placeholder="Informações da empresa"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-group">
+                                <label for="rdoNumber" class="block text-sm font-medium text-slate-700 mb-1">Nº do RDO</label>
+                                <input type="text" id="rdoNumber" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" value="RDO-2025-001">
+                            </div>
+                            <div class="form-group">
+                                <label for="reportDate" class="block text-sm font-medium text-slate-700 mb-1">Data</label>
+                                <input type="date" id="reportDate" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="constructionName" class="block text-sm font-medium text-slate-700 mb-1">Obra</label>
+                                <input type="text" id="constructionName" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Nome da obra">
+                            </div>
+                            <div class="form-group">
+                                <label for="constructionAddress" class="block text-sm font-medium text-slate-700 mb-1">Endereço</label>
+                                <input type="text" id="constructionAddress" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Endereço da obra">
+                            </div>
+                            <div class="form-group">
+                                <label for="contractNumber" class="block text-sm font-medium text-slate-700 mb-1">Contrato</label>
+                                <input type="text" id="contractNumber" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Número do contrato">
+                            </div>
+                            <div class="form-group">
+                                <label for="technicalManager" class="block text-sm font-medium text-slate-700 mb-1">Responsável técnico</label>
+                                <input type="text" id="technicalManager" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Nome do responsável">
+                            </div>
+                            <div class="form-group">
+                                <label for="creaNumber" class="block text-sm font-medium text-slate-700 mb-1">Nº CREA</label>
+                                <input type="text" id="creaNumber" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Número do CREA">
+                            </div>
+                            <div class="form-group">
+                                <label for="foreman" class="block text-sm font-medium text-slate-700 mb-1">Encarregado</label>
+                                <input type="text" id="foreman" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Nome do encarregado">
+                            </div>
+                            <div class="form-group">
+                                <label for="startDate" class="block text-sm font-medium text-slate-700 mb-1">Data de início</label>
+                                <input type="date" id="startDate" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="deadline" class="block text-sm font-medium text-slate-700 mb-1">Prazo</label>
+                                <input type="text" id="deadline" class="w-full p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Prazo da obra">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FIM: Card de Dados Gerais -->
+                </div>
+                <div id="tab-condicao-climatica" class="tab-content hidden">
+                    <!-- Card de Condição Climática -->
+                    <div class="card p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="form-group md:col-span-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Condição climática</label>
+                                <div class="space-y-4">
+                                    <div>
+                                        <h4 class="font-medium mb-2 text-slate-600">Manhã</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div class="weather-option" data-period="manha" data-condition="Com Sol">
+                                                <i class="fas fa-sun mr-2"></i> Com Sol
+                                            </div>
+                                            <div class="weather-option" data-period="manha" data-condition="Nublado">
+                                                <i class="fas fa-cloud mr-2"></i> Nublado
+                                            </div>
+                                            <div class="weather-option" data-period="manha" data-condition="Chuvoso">
+                                                <i class="fas fa-cloud-rain mr-2"></i> Chuvoso
+                                            </div>
+                                            <div class="weather-option" data-period="manha" data-condition="Tempestade">
+                                                <i class="fas fa-bolt mr-2"></i> Tempestade
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium mb-2 text-slate-600">Tarde</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div class="weather-option" data-period="tarde" data-condition="Com Sol">
+                                                <i class="fas fa-sun mr-2"></i> Com Sol
+                                            </div>
+                                            <div class="weather-option" data-period="tarde" data-condition="Nublado">
+                                                <i class="fas fa-cloud mr-2"></i> Nublado
+                                            </div>
+                                            <div class="weather-option" data-period="tarde" data-condition="Chuvoso">
+                                                <i class="fas fa-cloud-rain mr-2"></i> Chuvoso
+                                            </div>
+                                            <div class="weather-option" data-period="tarde" data-condition="Tempestade">
+                                                <i class="fas fa-bolt mr-2"></i> Tempestade
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium mb-2 text-slate-600">Noite</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            <div class="weather-option" data-period="noite" data-condition="Nublado">
+                                                <i class="fas fa-cloud-moon mr-2"></i> Nublado
+                                            </div>
+                                            <div class="weather-option" data-period="noite" data-condition="Chuvoso">
+                                                <i class="fas fa-cloud-moon-rain mr-2"></i> Chuvoso
+                                            </div>
+                                            <div class="weather-option" data-period="noite" data-condition="Tempestade">
+                                                <i class="fas fa-bolt mr-2"></i> Tempestade
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-mao-de-obra" class="tab-content hidden">
+                    <!-- Workforce Card (Mão de Obra) -->
+                    <div class="card p-6">
+                        <h2 class="section-title text-xl mb-4">Mão de Obra</h2>
+
+                        <div class="mb-6">
+                            <h3 class="font-medium mb-3 text-slate-700 flex items-center">
+                                <i class="fas fa-hard-hat mr-2 text-blue-600"></i>
+                                Mão de Obra Direta
+                            </h3>
+                            <div class="scrollable-table relative overflow-x-auto mb-4 border border-slate-200 rounded-lg">
+                                <table class="w-full text-sm text-left text-slate-700">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Profissional</th>
+                                            <th scope="col" class="px-6 py-3">Quantidade</th>
+                                            <th scope="col" class="px-6 py-3">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="directWorkforceTable">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="flex flex-col md:flex-row justify-between gap-4">
+                                <div class="flex gap-2 items-center">
+                                    <select id="directWorkforceSelect" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 flex-1">
+                                        <option value="Ajudante geral">Ajudante geral</option>
+                                        <option value="Apontador de obra">Apontador de obra</option>
+                                        <option value="Armador">Armador</option>
+                                        <option value="Carpinteiro">Carpinteiro</option>
+                                        <option value="Pedreiro">Pedreiro</option>
+                                        <option value="Soldador">Soldador</option>
+                                    </select>
+                                    <input type="number" id="directWorkforceQuantity" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 w-20" min="1" value="1" placeholder="Qtd">
+                                </div>
+                                <div class="flex gap-2">
+                                    <button id="addDirectWorkforce" class="btn btn-primary px-4 py-2 rounded-md">
+                                        <i class="fas fa-plus mr-2"></i> Adicionar
+                                    </button>
+                                    <button id="addNewDirectWorkforce" class="btn btn-success px-4 py-2 rounded-md">
+                                        <i class="fas fa-user-plus mr-2"></i> Nova Opção
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="font-medium mb-3 text-slate-700 flex items-center">
+                                <i class="fas fa-user-tie mr-2 text-blue-600"></i>
+                                Mão de Obra Indireta
+                            </h3>
+                            <div class="scrollable-table relative overflow-x-auto mb-4 border border-slate-200 rounded-lg">
+                                <table class="w-full text-sm text-left text-slate-700">
+                                    <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3">Profissional</th>
+                                            <th scope="col" class="px-6 py-3">Quantidade</th>
+                                            <th scope="col" class="px-6 py-3">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="indirectWorkforceTable">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="flex flex-col md:flex-row justify-between gap-4">
+                                <div class="flex gap-2 items-center">
+                                    <select id="indirectWorkforceSelect" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 flex-1">
+                                        <option value="Gerente de contrato">Gerente de contrato</option>
+                                        <option value="Engenheiro civil">Engenheiro civil</option>
+                                        <option value="Engenheiro elétrico">Engenheiro elétrico</option>
+                                        <option value="Técnico de segurança no trabalho">Técnico de segurança no trabalho</option>
+                                        <option value="Auxiliar administrativo">Auxiliar administrativo</option>
+                                        <option value="Comprador">Comprador</option>
+                                        <option value="Orçamentista">Orçamentista</option>
+                                    </select>
+                                    <input type="number" id="indirectWorkforceQuantity" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 w-20" min="1" value="1" placeholder="Qtd">
+                                </div>
+                                <div class="flex gap-2">
+                                    <button id="addIndirectWorkforce" class="btn btn-primary px-4 py-2 rounded-md">
+                                        <i class="fas fa-plus mr-2"></i> Adicionar
+                                    </button>
+                                    <button id="addNewIndirectWorkforce" class="btn btn-success px-4 py-2 rounded-md">
+                                        <i class="fas fa-user-plus mr-2"></i> Nova Opção
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-equipamentos" class="tab-content hidden">
+                    <!-- Equipment Card (Equipamentos) -->
+                    <div class="card p-6">
+                        <h2 class="section-title text-xl mb-4">Equipamentos</h2>
+
+                        <div class="scrollable-table relative overflow-x-auto mb-4 border border-slate-200 rounded-lg">
+                            <table class="w-full text-sm text-left text-slate-700">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">Equipamento</th>
+                                        <th scope="col" class="px-6 py-3">Quantidade</th>
+                                        <th scope="col" class="px-6 py-3">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="equipmentTable">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row justify-between gap-4">
+                            <div class="flex gap-2 items-center">
+                                <select id="equipmentSelect" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 flex-1">
+                                    <option value="Esvadeira hidráulica">Esvadeira hidráulica</option>
+                                    <option value="Retro escavadeira">Retro escavadeira</option>
+                                    <option value="Caminhão basculante">Caminhão basculante</option>
+                                    <option value="Rolo compactador">Rolo compactador</option>
+                                    <option value="Rolo pé de carneiro">Rolo pé de carneiro</option>
+                                </select>
+                                <input type="number" id="equipmentQuantity" class="p-2.5 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500 w-20" min="1" value="1" placeholder="Qtd">
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="addEquipment" class="btn btn-primary px-4 py-2 rounded-md">
+                                    <i class="fas fa-plus mr-2"></i> Adicionar
+                                </button>
+                                <button id="addNewEquipment" class="btn btn-success px-4 py-2 rounded-md">
+                                    <i class="fas fa-plus-circle mr-2"></i> Nova Opção
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-tarefas-ocorrencias" class="tab-content hidden">
+                    <!-- Tasks & Occurrences Card (Tarefas e Ocorrências) -->
+                    <div class="card p-6">
+                        <h2 class="section-title text-xl mb-4">Tarefas Realizadas</h2>
+
+                        <div class="mb-4">
+                            <input type="text" id="newTask" class="w-full p-3 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Descreva a tarefa realizada">
+                        </div>
+                        <button id="addTask" class="btn btn-primary w-full px-4 py-3 rounded-md mb-4">
+                            <i class="fas fa-plus-circle mr-2"></i> Adicionar Tarefa
+                        </button>
+
+                        <div class="space-y-3" id="tasksList">
+                            <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                                <i class="fas fa-info-circle mr-2"></i> Nenhuma tarefa adicionada ainda
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Occurrences Card -->
+                    <div class="card p-6 mt-6">
+                        <h2 class="section-title text-xl mb-4">Ocorrências</h2>
+
+                        <div class="mb-4">
+                            <input type="text" id="newOccurrence" class="w-full p-3 border border-slate-200 rounded-md focus:ring-2 focus:ring-blue-500" placeholder="Descreva a ocorrência">
+                        </div>
+                        <button id="addOccurrence" class="btn btn-primary w-full px-4 py-3 rounded-md mb-4">
+                            <i class="fas fa-plus-circle mr-2"></i> Adicionar Ocorrência
+                        </button>
+
+                        <div class="space-y-3" id="occurrencesList">
+                            <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                                <i class="fas fa-info-circle mr-2"></i> Nenhuma ocorrência registrada ainda
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-relatorio-fotografico" class="tab-content hidden">
+                    <!-- Photo Report Card (Relatório Fotográfico) -->
+                    <div class="card p-6">
+                        <h2 class="section-title text-xl mb-4">Relatório Fotográfico</h2>
+
+                        <input type="file" id="photoUpload" accept="image/*" multiple class="hidden">
+                        <button id="photoUploadButton" class="btn btn-primary w-full px-4 py-3 rounded-md mb-4">
+                            <i class="fas fa-camera mr-2"></i> Adicionar Fotos
+                        </button>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="photosContainer">
+                            <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                                <i class="fas fa-images mb-2 text-xl"></i>
+                                <p class="text-sm">Nenhuma foto adicionada ainda</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-assinaturas" class="tab-content hidden">
+                    <!-- Signatures Card (Assinaturas) -->
+                    <div class="card p-6">
+                        <h2 class="section-title text-xl mb-4">Assinaturas</h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Responsável Técnico</label>
+                                <div class="signature-pad flex items-center justify-center p-4 border-2 border-dashed border-slate-300 rounded-lg" id="techSignaturePad">
+                                    <span class="text-slate-400 text-center">Clique aqui para desenhar<br>ou clique no botão "Inserir"</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                    <button class="btn btn-primary" onclick="document.getElementById('techSignatureUpload').click()">
+                                        <i class="fas fa-upload mr-2"></i> Inserir
+                                    </button>
+                                    <button class="btn btn-danger" onclick="clearSignature('techSignaturePad')">
+                                        <i class="fas fa-trash mr-2"></i> Limpar
+                                    </button>
+                                </div>
+                                <input type="file" accept="image/*" class="hidden" id="techSignatureUpload">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Contratada</label>
+                                <div class="signature-pad flex items-center justify-center p-4 border-2 border-dashed border-slate-300 rounded-lg" id="contractorSignaturePad">
+                                    <span class="text-slate-400 text-center">Clique aqui para desenhar<br>ou clique no botão "Inserir"</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                    <button class="btn btn-primary" onclick="document.getElementById('contractorSignatureUpload').click()">
+                                        <i class="fas fa-upload mr-2"></i> Inserir
+                                    </button>
+                                    <button class="btn btn-danger" onclick="clearSignature('contractorSignaturePad')">
+                                        <i class="fas fa-trash mr-2"></i> Limpar
+                                    </button>
+                                </div>
+                                <input type="file" accept="image/*" class="hidden" id="contractorSignatureUpload">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Contratante</label>
+                                <div class="signature-pad flex items-center justify-center p-4 border-2 border-dashed border-slate-300 rounded-lg" id="clientSignaturePad">
+                                    <span class="text-slate-400 text-center">Clique aqui para desenhar<br>ou clique no botão "Inserir"</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                    <button class="btn btn-primary" onclick="document.getElementById('clientSignatureUpload').click()">
+                                        <i class="fas fa-upload mr-2"></i> Inserir
+                                    </button>
+                                    <button class="btn btn-danger" onclick="clearSignature('clientSignaturePad')">
+                                        <i class="fas fa-trash mr-2"></i> Limpar
+                                    </button>
+                                </div>
+                                <input type="file" accept="image/*" class="hidden" id="clientSignatureUpload">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Report Preview -->
+                <div class="card p-6">
+                    <h2 class="section-title text-xl mb-4">Visualização do Relatório</h2>
+                    <div id="reportPreview" class="text-sm text-slate-600 space-y-4">
+                        <div class="p-4 bg-slate-50 rounded-md text-center text-slate-500">
+                            <i class="fas fa-info-circle mr-2"></i> Preencha os campos para visualizar o relatório
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions -->
+                <div class="card p-6 space-y-3">
+                    <button id="saveReport" class="btn btn-success w-full px-4 py-3 rounded-md">
+                        <i class="fas fa-save mr-2"></i> Salvar Relatório
+                    </button>
+                    <button id="exportPDF" class="btn btn-danger w-full px-4 py-3 rounded-md">
+                        <i class="fas fa-file-pdf mr-2"></i> Exportar como PDF
+                    </button>
+                    <button id="clearData" class="btn btn-secondary w-full px-4 py-3 rounded-md">
+                        <i class="fas fa-broom mr-2"></i> Limpar Todos os Dados
+                    </button>
+                    <button id="newReport" class="btn btn-secondary w-full px-4 py-3 rounded-md">
+                        <i class="fas fa-file-alt mr-2"></i> Novo Relatório
+                    </button>
+                </div>
+                <!-- Recent Reports -->
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="section-title text-xl">Relatórios Recentes</h2>
+                        <button id="manageReportsBtn" class="btn btn-primary px-3 py-2 rounded-md text-sm">
+                            <i class="fas fa-cog mr-2"></i> Gerenciar
+                        </button>
+                    </div>
+                    <div class="space-y-2 text-sm" id="recentReports">
+                        <div class="p-3 bg-slate-50 rounded-md text-center text-slate-500">
+                            <i class="fas fa-info-circle mr-2"></i> Nenhum relatório salvo ainda
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="app-footer">
+        <div>Desenvolvido por <span>Francisco José</span></div>
+        <div class="location">Altamira/PA - 2025</div>
+    </footer>
+
+    <div id="pdfContent"></div>
+
+    <div id="photoPopup" class="photo-popup">
+        <span class="photo-popup-close">&times;</span>
+        <img id="popupImage" src="" alt="Imagem ampliada">
+    </div>
+
+    <!-- Modal de Gerenciamento de Relatórios -->
+    <div id="manageReportsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
+            <div class="flex justify-between items-center p-6 border-b border-slate-200">
+                <h3 class="text-xl font-bold text-slate-800">
+                    <i class="fas fa-cog mr-2 text-blue-600"></i>
+                    Gerenciar Relatórios
+                </h3>
+                <button id="closeManageModal" class="text-slate-400 hover:text-slate-600 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <div id="allReportsList" class="space-y-3">
+                    <!-- Os relatórios serão inseridos aqui dinamicamente -->
+                </div>
+            </div>
+            
+            <div class="flex justify-end gap-3 p-6 border-t border-slate-200">
+                <button id="closeManageModalBtn" class="btn btn-secondary px-4 py-2 rounded-md">
+                    <i class="fas fa-times mr-2"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================================================
+        // PWA FUNCTIONALITY
+        // ===================================================
+        
+        // Verificar suporte offline
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        
+        function updateOnlineStatus() {
+            const offlineAlert = document.getElementById('offlineAlert');
+            if (!navigator.onLine) {
+                offlineAlert.style.display = 'block';
+            } else {
+                offlineAlert.style.display = 'none';
+            }
+        }
+        
+        // Verificar se estamos offline ao carregar
+        updateOnlineStatus();
+        
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Criar o service worker inline
+                const swUrl = URL.createObjectURL(
+                    new Blob([
+                        `// Nome do cache
+                        const CACHE_NAME = 'rdo-app-v1';
+
+                        // Recursos para armazenar em cache
+                        const urlsToCache = [
+                            '/',
+                            'index.html',
+                            // Adicione outros recursos que deseja armazenar em cache
+                        ];
+
+                        // Instalação do Service Worker
+                        self.addEventListener('install', event => {
+                            event.waitUntil(
+                                caches.open(CACHE_NAME)
+                                    .then(cache => {
+                                        console.log('Cache aberto');
+                                        return cache.addAll(urlsToCache);
+                                    })
+                            );
+                        });
+
+                        // Ativar o Service Worker
+                        self.addEventListener('activate', event => {
+                            const cacheWhitelist = [CACHE_NAME];
+                            event.waitUntil(
+                                caches.keys().then(cacheNames => {
+                                    return Promise.all(
+                                        cacheNames.map(cacheName => {
+                                            if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                                return caches.delete(cacheName);
+                                            }
+                                        })
+                                    );
+                                })
+                            );
+                        });
+
+                        // Interceptar requisições
+                        self.addEventListener('fetch', event => {
+                            event.respondWith(
+                                caches.match(event.request)
+                                    .then(response => {
+                                        // Retorna a resposta do cache se encontrada
+                                        if (response) {
+                                            return response;
+                                        }
+                                        
+                                        // Se não estiver no cache, busca na rede
+                                        return fetch(event.request).then(
+                                            response => {
+                                                // Verifica se recebeu uma resposta válida
+                                                if(!response || response.status !== 200 || response.type !== 'basic') {
+                                                    return response;
+                                                }
+
+                                                // Clona a resposta
+                                                const responseToCache = response.clone();
+
+                                                // Adiciona ao cache
+                                                caches.open(CACHE_NAME)
+                                                    .then(cache => {
+                                                        cache.put(event.request, responseToCache);
+                                                    });
+
+                                                return response;
+                                            }
+                                        );
+                                    })
+                            );
+                        });`
+                    ], { type: 'application/javascript' })
+                );
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso:', registration);
+                    })
+                    .catch(error => {
+                        console.log('Falha ao registrar Service Worker:', error);
+                    });
+            });
+        }
+        
+        // Após o registro do service worker, forçar atualização se necessário
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.update();
+            }
+          });
+        }
+        
+        // Botão de instalação
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Previne a prompt automática
+            e.preventDefault();
+            // Guarda o evento para que possa ser acionado depois
+            deferredPrompt = e;
+            // Mostra o botão de instalação
+            installBtn.classList.remove('hidden');
+        });
+        
+        installBtn.addEventListener('click', () => {
+            if (deferredPrompt) {
+                // Mostra a prompt de instalação
+                deferredPrompt.prompt();
+                // Aguarda a resposta do usuário
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Usuário aceitou a instalação');
+                        
+                        // Mostrar mensagem de sucesso
+                        const successMsg = document.createElement('div');
+                        successMsg.className = 'install-success';
+                        successMsg.innerHTML = '<i class="fas fa-check-circle mr-2"></i> App instalado com sucesso!';
+                        document.body.appendChild(successMsg);
+                        
+                        // Remover a mensagem após 3 segundos
+                        setTimeout(() => {
+                            successMsg.remove();
+                        }, 3000);
+                        
+                        // Esconde o botão após instalação
+                        installBtn.classList.add('hidden');
+                        // Adiciona classe para indicar que o app está instalado
+                        document.body.classList.add('installed');
+                    } else {
+                        console.log('Usuário rejeitou a instalação');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        });
+        
+        // Verificar se o app já está instalado
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA foi instalado');
+            installBtn.classList.add('hidden');
+            document.body.classList.add('installed');
+        });
+        
+        // Verificar no carregamento se já está instalado
+        window.addEventListener('load', () => {
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                document.body.classList.add('installed');
+                installBtn.classList.add('hidden');
+            }
+        });
+        
+        // ===================================================
+        // Código existente do RDO...
+        // ===================================================
+        
+        // Initialize date fields
+        const today = new Date();
+        document.getElementById('reportDate').valueAsDate = today;
+        
+        // Update RDO number preview
+        document.getElementById('rdoNumber').addEventListener('input', function() {
+            document.getElementById('rdoNumberPreview').textContent = this.value;
+        });
+
+        // Logo upload functionality
+        const logoUpload = document.getElementById('logoUpload');
+        const logoInput = document.getElementById('logoInput');
+        const removeLogoBtn = document.getElementById('removeLogoBtn');
+        let uploadedLogoSrc = '';
+
+        logoUpload.addEventListener('click', () => logoInput.click());
+        
+        logoInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    uploadedLogoSrc = event.target.result;
+                    logoUpload.innerHTML = `<img src="${uploadedLogoSrc}" class="max-w-full max-h-full" alt="Logo">`;
+                    removeLogoBtn.classList.remove('hidden');
+                    updatePreview();
+                }
+                
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeLogoBtn.addEventListener('click', () => {
+            logoUpload.innerHTML = '<i class="fas fa-camera"></i>';
+            logoInput.value = '';
+            uploadedLogoSrc = '';
+            removeLogoBtn.classList.add('hidden');
+            updatePreview();
+        });
+
+        // Workforce tables setup
+        const directWorkforceTable = document.getElementById('directWorkforceTable');
+        const indirectWorkforceTable = document.getElementById('indirectWorkforceTable');
+        const equipmentTable = document.getElementById('equipmentTable');
+        
+        function addWorkforceRow(table, name, quantity) {
+            if (!name || !quantity) return;
+            
+            // Check for existing row with same name (case insensitive)
+            const existingRows = table.querySelectorAll('tr');
+            let existingRow = null;
+            
+            existingRows.forEach(row => {
+                const rowName = row.querySelector('td').textContent.toLowerCase();
+                if (rowName === name.toLowerCase()) {
+                    existingRow = row;
+                }
+            });
+            
+            if (existingRow) {
+                // Update quantity if exists
+                const qtyCell = existingRow.querySelectorAll('td')[1];
+                const currentQty = parseInt(qtyCell.textContent);
+                qtyCell.textContent = currentQty + parseInt(quantity);
+                
+                // Animate update
+                qtyCell.classList.add('bg-blue-50');
+                setTimeout(() => qtyCell.classList.remove('bg-blue-50'), 500);
+            } else {
+                // Add new row if doesn't exist
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-slate-50 animate-fadeIn';
+                row.innerHTML = `
+                    <td class="px-6 py-4">${name}</td>
+                    <td class="px-6 py-4">${quantity}</td>
+                    <td class="px-6 py-4">
+                        <button class="delete-row text-red-600 hover:text-red-800 px-2">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                table.appendChild(row);
+                
+                // Remove placeholder if exists
+                const placeholder = table.querySelector('tr:first-child td:first-child');
+                if (placeholder && placeholder.textContent.includes('Nenhum')) {
+                    table.removeChild(placeholder.parentNode);
+                }
+                
+                // Add event listener to delete button
+                row.querySelector('.delete-row').addEventListener('click', () => {
+                    row.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                    setTimeout(() => {
+                        row.remove();
+                        updatePreview();
+                        
+                        // Add placeholder back if no rows left
+                        if (table.querySelectorAll('tr').length === 0) {
+                            const placeholderRow = document.createElement('tr');
+                            placeholderRow.innerHTML = `
+                                <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                                    <i class="fas fa-info-circle mr-2"></i> Nenhum registro adicionado
+                                </td>
+                            `;
+                            table.appendChild(placeholderRow);
+                        }
+                    }, 300);
+                });
+            }
+            
+            updatePreview();
+        }
+
+        // Setup workforce buttons
+        document.getElementById('addDirectWorkforce').addEventListener('click', () => {
+            const name = document.getElementById('directWorkforceSelect').value;
+            const quantity = document.getElementById('directWorkforceQuantity').value;
+            addWorkforceRow(directWorkforceTable, name, quantity);
+        });
+
+        document.getElementById('addIndirectWorkforce').addEventListener('click', () => {
+            const name = document.getElementById('indirectWorkforceSelect').value;
+            const quantity = document.getElementById('indirectWorkforceQuantity').value;
+            addWorkforceRow(indirectWorkforceTable, name, quantity);
+        });
+
+        document.getElementById('addEquipment').addEventListener('click', () => {
+            const name = document.getElementById('equipmentSelect').value;
+            const quantity = document.getElementById('equipmentQuantity').value;
+            addWorkforceRow(equipmentTable, name, quantity);
+        });
+
+        // Tasks and Occurrences Management
+        const tasksList = document.getElementById('tasksList');
+        const occurrencesList = document.getElementById('occurrencesList');
+
+        function addListItem(list, type, text) {
+            if (!text) return;
+            
+            // Remove placeholder if exists
+            const placeholder = list.querySelector('div:first-child');
+            if (placeholder && (placeholder.textContent.includes('Nenhum') || placeholder.textContent.includes('Preencha'))) {
+                list.removeChild(placeholder);
+            }
+            
+            const li = document.createElement('div');
+            li.className = 'flex justify-between items-center bg-white p-3 rounded-md border border-slate-200 shadow-sm animate-fadeIn';
+            li.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${type === 'task' ? 'fa-check-circle text-green-500' : 'fa-exclamation-triangle text-yellow-500'} mr-3"></i>
+                    <span>${text}</span>
+                </div>
+                <button class="delete-item text-red-600 hover:text-red-800 px-2">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            list.appendChild(li);
+            
+            li.querySelector('.delete-item').addEventListener('click', () => {
+                li.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => {
+                    li.remove();
+                    
+                    // Add placeholder back if no items left
+                    if (list.children.length === 0) {
+                        const placeholderDiv = document.createElement('div');
+                        placeholderDiv.className = 'p-4 bg-slate-100 rounded-md text-center text-slate-500';
+                        placeholderDiv.innerHTML = `<i class="fas fa-info-circle mr-2"></i> Nenhum${type === 'task' ? 'a tarefa' : 'a ocorrência'} adicionada ainda`;
+                        list.appendChild(placeholderDiv);
+                    }
+                    updatePreview();
+                }, 300);
+            });
+            
+            document.getElementById(`new${type.charAt(0).toUpperCase() + type.slice(1)}`).value = '';
+            updatePreview();
+        }
+
+        document.getElementById('addTask').addEventListener('click', () => {
+            const text = document.getElementById('newTask').value.trim();
+            if (text) addListItem(tasksList, 'task', text);
+        });
+
+        document.getElementById('addOccurrence').addEventListener('click', () => {
+            const text = document.getElementById('newOccurrence').value.trim();
+            if (text) addListItem(occurrencesList, 'occurrence', text);
+        });
+
+        // Add tasks and occurrences on Enter key
+        document.getElementById('newTask').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('addTask').click();
+        });
+
+        document.getElementById('newOccurrence').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('addOccurrence').click();
+        });
+
+        // Photo Upload Functionality
+        document.getElementById('photoUploadButton').addEventListener('click', () => {
+            document.getElementById('photoUpload').click();
+        });
+
+        document.getElementById('photoUpload').addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            const photosContainer = document.getElementById('photosContainer');
+            
+            // Remove placeholder if exists
+            const placeholder = photosContainer.querySelector('div:first-child');
+            if (placeholder && placeholder.textContent.includes('Nenhum')) {
+                photosContainer.removeChild(placeholder);
+            }
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                
+                reader.onload = function(event) {
+                    const photoDiv = document.createElement('div');
+                    photoDiv.className = 'photo-item bg-white p-3 rounded-md border border-slate-200 shadow-sm animate-fadeIn flex flex-col items-center';
+                    
+                    photoDiv.innerHTML = `
+                        <div class="photo-thumbnail-container group">
+                            <img src="${event.target.result}" class="photo-thumbnail group-hover:scale-105 transition-transform cursor-pointer" alt="Foto da obra">
+                        </div>
+                        <textarea class="w-full p-2 border border-slate-200 rounded-md mt-3 text-sm h-16 focus:ring-2 focus:ring-blue-500" placeholder="Descrição da foto"></textarea>
+                        <button class="delete-photo w-full mt-2 px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm flex items-center justify-center">
+                            <i class="fas fa-trash mr-1"></i> Remover Foto
+                        </button>
+                    `;
+                    
+                    photosContainer.appendChild(photoDiv);
+                    
+                    // Adicionar evento de clique para o zoom
+                    const img = photoDiv.querySelector('img');
+                    img.addEventListener('click', function() {
+                        const popup = document.getElementById('photoPopup');
+                        const popupImg = document.getElementById('popupImage');
+                        popupImg.src = this.src;
+                        popup.style.display = 'flex';
+                    });
+                    
+                    // Add event listener to delete button
+                    photoDiv.querySelector('.delete-photo').addEventListener('click', () => {
+                        photoDiv.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                        setTimeout(() => {
+                            photoDiv.remove();
+                            
+                            // Add placeholder back if no photos left
+                            if (photosContainer.children.length === 0) {
+                                const placeholderDiv = document.createElement('div');
+                                placeholderDiv.className = 'p-4 bg-slate-100 rounded-md text-center text-slate-500';
+                                placeholderDiv.innerHTML = `
+                                    <i class="fas fa-images mb-2 text-xl"></i>
+                                    <p class="text-sm">Nenhuma foto adicionada ainda</p>
+                                `;
+                                photosContainer.appendChild(placeholderDiv);
+                            }
+                            updatePreview();
+                        }, 300);
+                    });
+                    
+                    // Update preview when description changes
+                    photoDiv.querySelector('textarea').addEventListener('input', updatePreview);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+            
+            updatePreview();
+        });
+
+        // Weather options handling
+        document.querySelectorAll('.weather-option').forEach(option => {
+            option.addEventListener('click', function() {
+                this.classList.toggle('selected');
+                updatePreview();
+            });
+        });
+
+        // Signature handling
+        function clearSignature(padId) {
+            const pad = document.getElementById(padId);
+            pad.innerHTML = '<span class="text-slate-400 text-center">Clique aqui para desenhar<br>ou clique no botão "Inserir"</span>';
+            updatePreview();
+        }
+
+        // Initialize signature pads
+        ['tech', 'contractor', 'client'].forEach(type => {
+            const pad = document.getElementById(`${type}SignaturePad`);
+            let isDrawing = false;
+            let lastX = 0;
+            let lastY = 0;
+            
+            // Start drawing
+            pad.addEventListener('mousedown', (e) => {
+                if (pad.querySelector('img')) return; // Don't draw if has uploaded image
+                
+                isDrawing = true;
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+                
+                // Prepare canvas if not already
+                if (!pad.querySelector('canvas')) {
+                    pad.innerHTML = '<canvas class="w-full h-full"></canvas>';
+                    const canvas = pad.querySelector('canvas');
+                    canvas.width = pad.offsetWidth;
+                    canvas.height = pad.offsetHeight;
+                }
+            });
+            
+            // Draw
+            pad.addEventListener('mousemove', (e) => {
+                if (!isDrawing || pad.querySelector('img')) return;
+                
+                const canvas = pad.querySelector('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(e.offsetX, e.offsetY);
+                ctx.stroke();
+                
+                [lastX, lastY] = [e.offsetX, e.offsetY];
+            });
+            
+            // Stop drawing
+            pad.addEventListener('mouseup', () => isDrawing = false);
+            pad.addEventListener('mouseleave', () => isDrawing = false);
+            
+            // Handle signature uploads
+            const uploadInput = document.getElementById(`${type}SignatureUpload`);
+            uploadInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        pad.innerHTML = `<img src="${event.target.result}" class="w-full h-full object-contain" alt="Assinatura">`;
+                        updatePreview();
+                    }
+                    
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // Update Preview Function
+        function updatePreview() {
+            const preview = document.getElementById('reportPreview');
+            preview.innerHTML = ''; // Limpa o conteúdo anterior
+            
+            // Ícone bonito de construção civil no topo
+            let html = `
+                <div class="flex justify-center mb-4">
+                    <span class="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-yellow-400 to-yellow-600 shadow-lg p-4">
+                        <i class="fas fa-hard-hat text-4xl text-white"></i>
+                    </span>
+                </div>
+            `;
+            
+            // Basic information
+            const constructionName = document.getElementById('constructionName').value || 'Nome da obra não especificado';
+            const reportDate = document.getElementById('reportDate').value ? 
+                new Date(document.getElementById('reportDate').value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Data não especificada';
+            
+            html += `
+                <div class="border-b border-slate-300 pb-4 mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-lg text-blue-700">${constructionName}</h3>
+                        <span class="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">${reportDate}</span>
+                    </div>
+            `;
+            
+            const address = document.getElementById('constructionAddress').value;
+            const contract = document.getElementById('contractNumber').value;
+            const techManager = document.getElementById('technicalManager').value;
+            const creaNumber = document.getElementById('creaNumber').value;
+            const foreman = document.getElementById('foreman').value;
+            
+            if (address || contract || techManager || creaNumber || foreman) {
+                html += `<div class="grid grid-cols-1 gap-1 text-sm">`;
+                if (address) html += `<p><span class="font-semibold">Endereço:</span> ${address}</p>`;
+                if (contract) html += `<p><span class="font-semibold">Contrato:</span> ${contract}</p>`;
+                if (techManager || creaNumber) {
+                    html += `<p><span class="font-semibold">Responsável técnico:</span> ${techManager || 'Não informado'}`;
+                    if (creaNumber) html += ` (CREA: ${creaNumber})`;
+                    html += `</p>`;
+                }
+                if (foreman) html += `<p><span class="font-semibold">Encarregado:</span> ${foreman}</p>`;
+                html += `</div>`;
+            } else {
+                html += `<p class="text-sm text-slate-500">Adicione mais informações sobre a obra</p>`;
+            }
+            
+            html += `</div>`;
+            
+            // Weather conditions
+            const selectedWeatherManha = document.querySelector('.weather-option[data-period="manha"].selected');
+            const selectedWeatherTarde = document.querySelector('.weather-option[data-period="tarde"].selected');
+            const selectedWeatherNoite = document.querySelector('.weather-option[data-period="noite"].selected');
+            
+            const weatherItems = [];
+            if (selectedWeatherManha) weatherItems.push(`<span class="inline-flex items-center"><i class="fas fa-sun mr-1"></i> Manhã: ${selectedWeatherManha.dataset.condition}</span>`);
+            if (selectedWeatherTarde) weatherItems.push(`<span class="inline-flex items-center"><i class="fas fa-sun mr-1"></i> Tarde: ${selectedWeatherTarde.dataset.condition}</span>`);
+            if (selectedWeatherNoite) weatherItems.push(`<span class="inline-flex items-center"><i class="fas fa-moon mr-1"></i> Noite: ${selectedWeatherNoite.dataset.condition}</span>`);
+            
+            if (weatherItems.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-cloud-sun mr-2 text-blue-600"></i>
+                            Condições Climáticas
+                        </h4>
+                        <div class="flex flex-wrap gap-4 text-sm">
+                            ${weatherItems.join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Direct workforce
+            const directRows = directWorkforceTable.querySelectorAll('tr');
+            if (directRows.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-hard-hat mr-2 text-blue-600"></i>
+                            Mão de Obra Direta
+                        </h4>
+                        <ul class="list-disc list-inside text-sm pl-4">
+                `;
+                
+                directRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        html += `<li>${cells[0].textContent} - ${cells[1].textContent} pessoa(s)</li>`;
+                    }
+                });
+                
+                html += `</ul></div>`;
+            }
+            
+            // Indirect workforce
+            const indirectRows = indirectWorkforceTable.querySelectorAll('tr');
+            if (indirectRows.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-user-tie mr-2 text-blue-600"></i>
+                            Mão de Obra Indireta
+                        </h4>
+                        <ul class="list-disc list-inside text-sm pl-4">
+                `;
+                
+                indirectRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        html += `<li>${cells[0].textContent} - ${cells[1].textContent} pessoa(s)</li>`;
+                    }
+                });
+                
+                html += `</ul></div>`;
+            }
+            
+            // Equipment
+            const equipmentRows = equipmentTable.querySelectorAll('tr');
+            if (equipmentRows.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-tools mr-2 text-blue-600"></i>
+                            Equipamentos
+                        </h4>
+                        <ul class="list-disc list-inside text-sm pl-4">
+                `;
+                
+                equipmentRows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        html += `<li>${cells[0].textContent} - ${cells[1].textContent} unidade(s)</li>`;
+                    }
+                });
+                
+                html += `</ul></div>`;
+            }
+            
+            // Tasks summary
+            const taskItems = tasksList.querySelectorAll('.flex.items-center');
+            if (taskItems.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-tasks mr-2 text-blue-600"></i>
+                            Tarefas Realizadas
+                        </h4>
+                        <ul class="list-disc list-inside text-sm pl-4">
+                `;
+                
+                const processedTasks = new Set();
+                taskItems.forEach(item => {
+                    const taskText = item.querySelector('span')?.textContent;
+                    if (taskText && !processedTasks.has(taskText)) {
+                        processedTasks.add(taskText);
+                        html += `<li>${taskText}</li>`;
+                    }
+                });
+                
+                html += `</ul></div>`;
+            }
+            
+            // Occurrences summary
+            const occurrenceItems = occurrencesList.querySelectorAll('.flex.items-center');
+            if (occurrenceItems.length > 0) {
+                html += `
+                    <div class="border-b border-slate-300 pb-4 mb-4">
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-exclamation-triangle mr-2 text-orange-500"></i>
+                            Ocorrências
+                        </h4>
+                        <ul class="list-disc list-inside text-sm pl-4">
+                `;
+                
+                const processedOccurrences = new Set();
+                occurrenceItems.forEach(item => {
+                    const occurrenceText = item.querySelector('span')?.textContent;
+                    if (occurrenceText && !processedOccurrences.has(occurrenceText)) {
+                        processedOccurrences.add(occurrenceText);
+                        html += `<li>${occurrenceText}</li>`;
+                    }
+                });
+                
+                html += `</ul></div>`;
+            }
+            
+            // Photo preview (count only)
+            const photoItems = document.querySelectorAll('.photo-item');
+            if (photoItems.length > 0) {
+                html += `
+                    <div>
+                        <h4 class="font-semibold mb-2 text-slate-700 flex items-center">
+                            <i class="fas fa-camera mr-2 text-blue-600"></i>
+                            Relatório Fotográfico
+                        </h4>
+                        <p class="text-sm">${photoItems.length} foto(s) anexada(s)</p>
+                    </div>
+                `;
+            }
+            
+            preview.innerHTML = html;
+        }
+        
+        // Setup event listeners for form changes to update preview
+        const formInputs = document.querySelectorAll('input, textarea, select');
+        formInputs.forEach(input => {
+            if (!input.id.includes('newTask') && !input.id.includes('newOccurrence')) {
+                input.addEventListener('input', updatePreview);
+            }
+        });
+        
+        // Save Report Functionality
+        document.getElementById('saveReport').addEventListener('click', () => {
+            const constructionName = document.getElementById('constructionName').value || 'RDO';
+            const reportDate = document.getElementById('reportDate').value || 'sem data';
+            const dateFormatted = reportDate ? new Date(reportDate + 'T00:00:00').toLocaleDateString('pt-BR') : reportDate;
+            const reportName = `${constructionName} - ${dateFormatted}`;
+            
+            // Coletar todos os dados do formulário
+            const reportData = {
+                rdoNumber: document.getElementById('rdoNumber').value,
+                reportDate: document.getElementById('reportDate').value,
+                constructionName: document.getElementById('constructionName').value,
+                constructionAddress: document.getElementById('constructionAddress').value,
+                contractNumber: document.getElementById('contractNumber').value,
+                technicalManager: document.getElementById('technicalManager').value,
+                creaNumber: document.getElementById('creaNumber').value,
+                foreman: document.getElementById('foreman').value,
+                startDate: document.getElementById('startDate').value,
+                deadline: document.getElementById('deadline').value,
+                companyInfo: document.getElementById('companyInfo').value,
+                weather: Array.from(document.querySelectorAll('.weather-option.selected')).map(opt => opt.textContent),
+                equipment: Array.from(document.querySelectorAll('#equipmentTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    return {
+                        name: cells[0]?.textContent || '',
+                        quantity: cells[1]?.textContent || ''
+                    };
+                }).filter(item => item.name && item.quantity),
+                tasks: Array.from(document.querySelectorAll('#tasksList .flex.items-center span')).map(item => item.textContent),
+                occurrences: Array.from(document.querySelectorAll('#occurrencesList .flex.items-center span')).map(item => item.textContent),
+                indirectLabor: Array.from(document.querySelectorAll('#indirectWorkforceTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    return {
+                        name: cells[0]?.textContent || '',
+                        quantity: cells[1]?.textContent || ''
+                    };
+                }).filter(item => item.name && item.quantity),
+                directLabor: Array.from(document.querySelectorAll('#directWorkforceTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    return {
+                        name: cells[0]?.textContent || '',
+                        quantity: cells[1]?.textContent || ''
+                    };
+                }).filter(item => item.name && item.quantity),
+                photos: Array.from(document.querySelectorAll('#photosList img')).map(img => img.src)
+            };
+            
+            const recentReports = document.getElementById('recentReports');
+            
+            // Remove placeholder if exists
+            const placeholder = recentReports.querySelector('div:first-child');
+            if (placeholder && placeholder.textContent.includes('Nenhum')) {
+                recentReports.removeChild(placeholder);
+            }
+            
+            const reportItem = document.createElement('div');
+            reportItem.className = 'p-3 border-b border-slate-200 hover:bg-slate-50 cursor-pointer flex justify-between items-center';
+            reportItem.innerHTML = `
+                <span>${reportName}</span>
+                <div class="flex gap-2">
+                    <button class="text-blue-600 hover:text-blue-800 view-report" title="Visualizar/Editar">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-800 delete-report" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Armazenar dados do relatório no elemento
+            reportItem.dataset.reportData = JSON.stringify(reportData);
+            
+            recentReports.insertBefore(reportItem, recentReports.firstChild);
+            
+            // Adicionar eventos aos botões
+            reportItem.querySelector('.view-report').addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadReportData(reportData);
+            });
+            
+            reportItem.querySelector('.delete-report').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('Tem certeza que deseja excluir este relatório?')) {
+                    reportItem.remove();
+                    if (recentReports.children.length === 0) {
+                        recentReports.innerHTML = `
+                            <div class="p-3 bg-slate-50 rounded-md text-center text-slate-500">
+                                <i class="fas fa-info-circle mr-2"></i> Nenhum relatório salvo ainda
+                            </div>
+                        `;
+                    }
+                }
+            });
+            
+            // Show success message
+            const saveBtn = document.getElementById('saveReport');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Salvo com sucesso!';
+            saveBtn.classList.remove('bg-green-600');
+            saveBtn.classList.add('bg-emerald-600');
+            
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Salvar Relatório';
+                saveBtn.classList.remove('bg-emerald-600');
+                saveBtn.classList.add('bg-green-600');
+            }, 2000);
+        });
+
+        // Função para carregar dados do relatório
+        function loadReportData(reportData) {
+            // Preencher campos básicos
+            document.getElementById('rdoNumber').value = reportData.rdoNumber;
+            document.getElementById('reportDate').value = reportData.reportDate;
+            document.getElementById('constructionName').value = reportData.constructionName;
+            document.getElementById('constructionAddress').value = reportData.constructionAddress;
+            document.getElementById('contractNumber').value = reportData.contractNumber;
+            document.getElementById('technicalManager').value = reportData.technicalManager;
+            document.getElementById('creaNumber').value = reportData.creaNumber;
+            document.getElementById('foreman').value = reportData.foreman;
+            document.getElementById('startDate').value = reportData.startDate;
+            document.getElementById('deadline').value = reportData.deadline;
+            document.getElementById('companyInfo').value = reportData.companyInfo;
+
+            // Limpar e preencher condições climáticas
+            document.querySelectorAll('.weather-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (reportData.weather.includes(opt.textContent)) {
+                    opt.classList.add('selected');
+                }
+            });
+
+            // Limpar e preencher equipamentos
+            const equipmentTable = document.getElementById('equipmentTable');
+            equipmentTable.innerHTML = '';
+            reportData.equipment.forEach(item => {
+                const row = equipmentTable.insertRow();
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>
+                        <button class="text-red-600 hover:text-red-800 delete-row">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            });
+
+            // Limpar e preencher Mão de Obra Indireta
+            const indirectLaborTable = document.getElementById('indirectWorkforceTable');
+            indirectLaborTable.innerHTML = '';
+            reportData.indirectLabor.forEach(item => {
+                const row = indirectLaborTable.insertRow();
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>
+                        <button class="text-red-600 hover:text-red-800 delete-row">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            });
+
+            // Limpar e preencher Mão de Obra Direta
+            const directLaborTable = document.getElementById('directWorkforceTable');
+            directLaborTable.innerHTML = '';
+            reportData.directLabor.forEach(item => {
+                const row = directLaborTable.insertRow();
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>
+                        <button class="text-red-600 hover:text-red-800 delete-row">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+            });
+
+            // Limpar e preencher tarefas
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = '';
+            reportData.tasks.forEach(task => {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'flex items-center justify-between p-2 bg-slate-50 rounded-md mb-2';
+                taskItem.innerHTML = `
+                    <span>${task}</span>
+                    <button class="text-red-600 hover:text-red-800 delete-task">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                tasksList.appendChild(taskItem);
+            });
+
+            // Limpar e preencher ocorrências
+            const occurrencesList = document.getElementById('occurrencesList');
+            occurrencesList.innerHTML = '';
+            reportData.occurrences.forEach(occurrence => {
+                const occurrenceItem = document.createElement('div');
+                occurrenceItem.className = 'flex items-center justify-between p-2 bg-slate-50 rounded-md mb-2';
+                occurrenceItem.innerHTML = `
+                    <span>${occurrence}</span>
+                    <button class="text-red-600 hover:text-red-800 delete-occurrence">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                occurrencesList.appendChild(occurrenceItem);
+            });
+
+            // Limpar e preencher fotos
+            const photosList = document.getElementById('photosList');
+            photosList.innerHTML = '';
+            reportData.photos.forEach(photoSrc => {
+                const photoItem = document.createElement('div');
+                photoItem.className = 'relative group';
+                photoItem.innerHTML = `
+                    <img src="${photoSrc}" alt="Foto da obra" class="w-24 h-24 object-cover rounded-md cursor-pointer">
+                    <button class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity delete-photo">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                photosList.appendChild(photoItem);
+            });
+
+            // Atualizar preview
+            updatePreview();
+
+            // Rolar para o topo do formulário
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Export to PDF Functionality
+        document.getElementById('exportPDF').addEventListener('click', async () => {
+            const exportBtn = document.getElementById('exportPDF');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Gerando PDF...';
+            exportBtn.disabled = true;
+
+            try {
+                // Validação dos campos obrigatórios
+                const requiredFields = [
+                    { id: 'constructionName', name: 'Nome da Obra' },
+                    { id: 'constructionAddress', name: 'Endereço da Obra' },
+                    { id: 'technicalManager', name: 'Responsável Técnico' },
+                    { id: 'foreman', name: 'Encarregado' }
+                ];
+                let missingFields = [];
+                requiredFields.forEach(field => {
+                    if (!document.getElementById(field.id).value.trim()) {
+                        missingFields.push(field.name);
+                    }
+                });
+                if (missingFields.length > 0) {
+                    throw new Error(`Os seguintes campos são obrigatórios:\n\n- ${missingFields.join('\n- ')}`);
+                }
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = 210;
+                const pageHeight = 297;
+                const marginX = 10;
+                const headerHeight = 40;
+                const tableMarginTop = 50; // margem ajustada para 50
+                let y = headerHeight + 10;
+
+                // Carregar logotipo corretamente (aguardar base64)
+                let logoBase64 = null;
+                if (uploadedLogoSrc) {
+                    if (uploadedLogoSrc.startsWith('data:image')) {
+                        logoBase64 = uploadedLogoSrc;
+                    } else {
+                        try {
+                            logoBase64 = await getBase64FromImgUrl(uploadedLogoSrc);
+                        } catch (e) {
+                            console.error('Erro ao converter logotipo:', e);
+                            logoBase64 = null;
+                        }
+                    }
+                }
+                // Debug do logotipo
+                console.log('Logo base64:', logoBase64);
+
+                // Cabeçalho personalizado
+                function addHeader(doc) {
+                    const pageWidth = doc.internal.pageSize.width;
+                    const headerHeight = 40;
+                    
+                    // Título centralizado
+                    doc.setFontSize(16);
+                    doc.setTextColor(30, 64, 175);
+                    doc.setFont(undefined, 'normal');
+                    doc.text('Relatório Diário de Obra (RDO)', pageWidth / 2, 20, { align: 'center' });
+                    
+                    // Posicionamento do logo e razão social
+                    const contentY = 35;
+                    const marginX = 10;
+                    const logoWidth = 40;
+                    const logoHeight = 20;
+                    
+                    // Razão social à esquerda
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    const companyInfo = document.getElementById('companyInfo').value || '';
+                    const companyLines = doc.splitTextToSize(companyInfo, pageWidth - (logoWidth + marginX * 3));
+                    doc.text(companyLines, marginX, contentY);
+                    
+                    // Logotipo à direita
+                    if (logoBase64) {
+                        try {
+                            const logoX = pageWidth - logoWidth - marginX;
+                            const logoY = contentY - 15;
+                            doc.addImage(logoBase64, 'PNG', logoX, logoY, logoWidth, logoHeight);
+                        } catch (e) {
+                            console.error('Erro ao inserir logotipo:', e);
+                        }
+                    }
+                    
+                    return headerHeight;
+                }
+
+                // Rodapé personalizado
+                function addFooter(doc, pageNumber, totalPages) {
+                    const now = new Date();
+                    const dateTimeStr = now.toLocaleString('pt-BR');
+                    doc.setFontSize(9);
+                    doc.setTextColor(128, 128, 128); // Cor cinza
+                    doc.setFont(undefined, 'italic');
+                    doc.text(`Gerado em: ${dateTimeStr}`, 10, pageHeight - 8);
+                    doc.text(`Página ${pageNumber} de ${totalPages}`, pageWidth - 40, pageHeight - 8);
+                }
+
+                // Dados principais
+                const mainData = [
+                    ['Nº do RDO', document.getElementById('rdoNumber').value || 'Não informado'],
+                    ['Data do Relatório', document.getElementById('reportDate').value ? 
+                        new Date(document.getElementById('reportDate').value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informado'],
+                    ['Nome da Obra', document.getElementById('constructionName').value || 'Não informado'],
+                    ['Endereço da Obra', document.getElementById('constructionAddress').value || 'Não informado'],
+                    ['Nº do Contrato', document.getElementById('contractNumber').value || 'Não informado'],
+                    ['Responsável Técnico', document.getElementById('technicalManager').value || 'Não informado'],
+                    ['Nº CREA', document.getElementById('creaNumber').value || 'Não informado'],
+                    ['Encarregado da Obra', document.getElementById('foreman').value || 'Não informado'],
+                    ['Data de Início da Obra', document.getElementById('startDate').value ? 
+                        new Date(document.getElementById('startDate').value + 'T00:00:00').toLocaleDateString('pt-BR') : 'Não informado'],
+                    ['Prazo da Obra', document.getElementById('deadline').value || 'Não informado']
+                ];
+
+                // Adicionar condição climática (nova versão: tabela separada)
+                const periods = ['manha', 'tarde', 'noite'];
+                const periodLabels = { manha: 'Manhã', tarde: 'Tarde', noite: 'Noite' };
+                let weatherTable = [];
+                periods.forEach(period => {
+                    const selectedOptions = Array.from(document.querySelectorAll(`.weather-option[data-period="${period}"].selected`));
+                    if (selectedOptions.length > 0) {
+                        const conditions = selectedOptions.map(opt => opt.dataset.condition).join(', ');
+                        weatherTable.push([periodLabels[period], conditions]);
+                    }
+                });
+
+                // Exemplo para a primeira tabela (mainData):
+                pdf.autoTable({
+                    startY: headerHeight + 10,
+                    margin: { top: 0, left: marginX, right: marginX },
+                    head: [['Dados', 'Descrição']],
+                    body: mainData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [59, 130, 246] },
+                    styles: { fontSize: 10 },
+                    didDrawPage: (data) => {
+                        addHeader(pdf);
+                    }
+                });
+                y = pdf.lastAutoTable.finalY + 4;
+
+                // Tabela separada para condição climática
+                if (weatherTable.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Período', 'Condições Climáticas']],
+                        body: weatherTable,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // Mão de obra direta
+                const directRows = Array.from(document.querySelectorAll('#directWorkforceTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        return [cells[0].textContent, cells[1].textContent];
+                    }
+                    return null;
+                }).filter(Boolean);
+                if (directRows.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Mão de Obra Direta', 'Quantidade']],
+                        body: directRows,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // Mão de obra indireta
+                const indirectRows = Array.from(document.querySelectorAll('#indirectWorkforceTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        return [cells[0].textContent, cells[1].textContent];
+                    }
+                    return null;
+                }).filter(Boolean);
+                if (indirectRows.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Mão de Obra Indireta', 'Quantidade']],
+                        body: indirectRows,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // Equipamentos
+                const equipRows = Array.from(document.querySelectorAll('#equipmentTable tr')).map(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length >= 2) {
+                        return [cells[0].textContent, cells[1].textContent];
+                    }
+                    return null;
+                }).filter(Boolean);
+                if (equipRows.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Equipamentos Utilizados', 'Quantidade']],
+                        body: equipRows,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // Tarefas realizadas
+                const taskItems = Array.from(document.querySelectorAll('#tasksList .flex.items-center span')).map(item => [item.textContent]);
+                if (taskItems.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Tarefas Realizadas']],
+                        body: taskItems,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // Ocorrências
+                const occItems = Array.from(document.querySelectorAll('#occurrencesList .flex.items-center span')).map(item => [item.textContent]);
+                if (occItems.length > 0) {
+                    pdf.autoTable({
+                        margin: { top: tableMarginTop, left: marginX, right: marginX },
+                        head: [['Ocorrências']],
+                        body: occItems,
+                        theme: 'grid',
+                        headStyles: { fillColor: [59, 130, 246] },
+                        styles: { fontSize: 10 },
+                        didDrawPage: (data) => {
+                            addHeader(pdf);
+                        }
+                    });
+                    y = pdf.lastAutoTable.finalY + 4;
+                }
+
+                // FOTOS (em grid)
+                const photoItems = Array.from(document.querySelectorAll('#photosContainer .photo-item'));
+                if (photoItems.length > 0) {
+                    let col = 0;
+                    let imgWidth = 58, imgHeight = 36;
+                    let margin = 5;
+                    let maxCols = 3;
+                    let x = marginX, imgY = y + 8;
+                    pdf.setFontSize(12);
+                    pdf.text('Relatório Fotográfico:', marginX, imgY);
+                    imgY += 6;
+                    for (let i = 0; i < photoItems.length; i++) {
+                        const img = photoItems[i].querySelector('img');
+                        const desc = photoItems[i].querySelector('textarea')?.value || 'Sem descrição';
+                        if (img && img.src) {
+                            if (imgY + imgHeight + 20 > pageHeight - 20) {
+                                pdf.addPage();
+                                addHeader(pdf);
+                                imgY = headerHeight + 10;
+                            }
+                            pdf.addImage(img.src, 'PNG', x, imgY, imgWidth, imgHeight);
+                            pdf.setDrawColor(100, 100, 100);
+                            pdf.rect(x, imgY, imgWidth, imgHeight); // borda só nas fotos
+                            pdf.setFontSize(9);
+                            pdf.text(desc, x, imgY + imgHeight + 5, { maxWidth: imgWidth });
+                            col++;
+                            x += imgWidth + margin;
+                            if (col === maxCols) {
+                                col = 0;
+                                x = marginX;
+                                imgY += imgHeight + 14;
+                            }
+                        }
+                    }
+                    y = imgY + imgHeight + 8;
+                }
+
+                // ASSINATURAS
+                let sigY = y + 20;
+                if (sigY > pageHeight - 40) {
+                    pdf.addPage();
+                    addHeader(pdf);
+                    sigY = headerHeight + 20;
+                }
+                pdf.setFontSize(12);
+                pdf.text('Assinaturas:', marginX, sigY);
+                sigY += 10;
+                // Linhas para assinatura
+                pdf.line(20, sigY, 80, sigY);
+                pdf.line(90, sigY, 150, sigY);
+                pdf.line(160, sigY, 200, sigY);
+                pdf.setFontSize(9);
+                pdf.text('Responsável Técnico', 50, sigY + 5, { align: 'center' });
+                pdf.text('Contratada', 120, sigY + 5, { align: 'center' });
+                pdf.text('Contratante', 180, sigY + 5, { align: 'center' });
+                // Nomes abaixo da linha
+                pdf.text(document.getElementById('technicalManager').value || '', 50, sigY + 10, { align: 'center' });
+                pdf.text('_________________________', 120, sigY + 10, { align: 'center' });
+                pdf.text('_________________________', 180, sigY + 10, { align: 'center' });
+                // Adicionar imagens das assinaturas se existirem
+                function getSignatureBase64(padId) {
+                    const pad = document.getElementById(padId);
+                    const img = pad.querySelector('img');
+                    return img ? img.src : null;
+                }
+                const techSig = getSignatureBase64('techSignaturePad');
+                const contractorSig = getSignatureBase64('contractorSignaturePad');
+                const clientSig = getSignatureBase64('clientSignaturePad');
+                if (techSig) pdf.addImage(techSig, 'PNG', 30, sigY - 12, 40, 18);
+                if (contractorSig) pdf.addImage(contractorSig, 'PNG', 100, sigY - 12, 40, 18);
+                if (clientSig) pdf.addImage(clientSig, 'PNG', 150, sigY - 12, 40, 18);
+
+                // Rodapé em todas as páginas
+                const pageCount = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    pdf.setPage(i);
+                    addFooter(pdf, i, pageCount);
+                }
+
+                // Salvar PDF
+                const filename = `RDO_${document.getElementById('constructionName').value.replace(/\s+/g, '_')}_${document.getElementById('reportDate').value || new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+                pdf.save(filename);
+
+                exportBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> PDF gerado!';
+                setTimeout(() => {
+                    exportBtn.innerHTML = originalText;
+                    exportBtn.disabled = false;
+                }, 1500);
+
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert(error.message || 'Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.');
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }
+        });
+        
+        // New Report Button
+        document.getElementById('newReport').addEventListener('click', () => {
+            if (confirm('Deseja criar um novo relatório? Todos os dados não salvos serão perdidos.')) {
+                resetForm();
+            }
+        });
+        
+        // Clear Data Button
+        document.getElementById('clearData').addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+                resetForm();
+            }
+        });
+        
+        // Function to reset the form
+        function resetForm() {
+            // Reset basic information
+            document.getElementById('rdoNumber').value = 'RDO-' + new Date().getFullYear() + '-001';
+            document.getElementById('reportDate').valueAsDate = new Date();
+            document.getElementById('constructionName').value = '';
+            document.getElementById('constructionAddress').value = '';
+            document.getElementById('contractNumber').value = '';
+            document.getElementById('technicalManager').value = '';
+            document.getElementById('creaNumber').value = '';
+            document.getElementById('foreman').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('deadline').value = '';
+            document.getElementById('companyInfo').value = '';
+            
+            // Clear weather selections
+            document.querySelectorAll('.weather-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            // Clear tables
+            document.getElementById('directWorkforceTable').innerHTML = `
+                <tr>
+                    <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                        <i class="fas fa-info-circle mr-2"></i> Nenhum registro adicionado
+                    </td>
+                </tr>
+            `;
+            
+            document.getElementById('indirectWorkforceTable').innerHTML = `
+                <tr>
+                    <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                        <i class="fas fa-info-circle mr-2"></i> Nenhum registro adicionado
+                    </td>
+                </tr>
+            `;
+            
+            document.getElementById('equipmentTable').innerHTML = `
+                <tr>
+                    <td colspan="3" class="px-6 py-4 text-center text-slate-500">
+                        <i class="fas fa-info-circle mr-2"></i> Nenhum registro adicionado
+                    </td>
+                </tr>
+            `;
+            
+            // Clear lists
+            document.getElementById('tasksList').innerHTML = `
+                <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                    <i class="fas fa-info-circle mr-2"></i> Nenhuma tarefa adicionada ainda
+                </div>
+            `;
+            
+            document.getElementById('occurrencesList').innerHTML = `
+                <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                    <i class="fas fa-info-circle mr-2"></i> Nenhuma ocorrência registrada ainda
+                </div>
+            `;
+            
+            // Clear photos
+            document.getElementById('photosContainer').innerHTML = `
+                <div class="p-4 bg-slate-100 rounded-md text-center text-slate-500">
+                    <i class="fas fa-images mb-2 text-xl"></i>
+                    <p class="text-sm">Nenhuma foto adicionada ainda</p>
+                </div>
+            `;
+            
+            // Clear signatures
+            clearSignature('techSignaturePad');
+            clearSignature('contractorSignaturePad');
+            clearSignature('clientSignaturePad');
+            
+            // Clear logo
+            if (removeLogoBtn && !removeLogoBtn.classList.contains('hidden')) {
+                removeLogoBtn.click();
+            }
+            
+            // Update preview
+            updatePreview();
+        }
+        
+        // New Option functionality
+        document.getElementById('addNewDirectWorkforce').addEventListener('click', () => {
+            addNewOption('directWorkforceSelect', 'Digite o nome da nova profissão:');
+        });
+        
+        document.getElementById('addNewIndirectWorkforce').addEventListener('click', () => {
+            addNewOption('indirectWorkforceSelect', 'Digite o nome da nova profissão:');
+        });
+        
+        document.getElementById('addNewEquipment').addEventListener('click', () => {
+            addNewOption('equipmentSelect', 'Digite o nome do novo equipamento:');
+        });
+        
+        function addNewOption(selectId, promptMessage) {
+            const newOption = prompt(promptMessage);
+            if (newOption && newOption.trim()) {
+                const optionValue = newOption.trim();
+                const select = document.getElementById(selectId);
+                
+                // Check if option already exists
+                const exists = Array.from(select.options).some(opt => 
+                    opt.value.toLowerCase() === optionValue.toLowerCase()
+                );
+                
+                if (!exists) {
+                    const option = document.createElement('option');
+                    option.value = optionValue;
+                    option.textContent = optionValue;
+                    select.add(option);
+                    select.value = optionValue;
+                } else {
+                    alert('Esta opção já existe!');
+                }
+            }
+        }
+        
+        // Initialize the preview
+        updatePreview();
+        
+        // Set today's date by default
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('reportDate').value = formattedDate;
+        });
+
+        function drawTable(doc, data, startX, startY, colWidths) {
+            const lineHeight = 8;
+            let currentY = startY;
+            
+            // Desenha o cabeçalho
+            doc.setFillColor(30, 64, 175); // Cor azul escuro
+            doc.setTextColor(255, 255, 255); // Texto branco
+            doc.setFont(undefined, 'bold');
+            
+            let currentX = startX;
+            data[0].forEach((header, i) => {
+                doc.rect(currentX, currentY, colWidths[i], lineHeight, 'F');
+                doc.text(header, currentX + 2, currentY + 5);
+                currentX += colWidths[i];
+            });
+            
+            // Desenha as linhas da tabela
+            currentY += lineHeight;
+            doc.setTextColor(51, 65, 85); // Cor do texto normal
+            
+            for (let i = 1; i < data.length; i++) {
+                if (currentY > doc.internal.pageSize.height - 20) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+                
+                currentX = startX;
+                data[i].forEach((cell, j) => {
+                    doc.setDrawColor(226, 232, 240); // Cor da borda
+                    doc.rect(currentX, currentY, colWidths[j], lineHeight);
+                    doc.setFont(undefined, 'normal');
+                    doc.text(cell, currentX + 2, currentY + 5);
+                    currentX += colWidths[j];
+                });
+                currentY += lineHeight;
+            }
+            
+            return currentY;
+        }
+
+        // Função para converter imagem para base64 (caso não esteja)
+        async function getBase64FromImgUrl(url) {
+            return new Promise((resolve, reject) => {
+                const img = new window.Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        // Adicionar evento de clique nas fotos
+        document.querySelectorAll('.photo-item img').forEach(img => {
+            img.addEventListener('click', function() {
+                const popup = document.getElementById('photoPopup');
+                const popupImg = document.getElementById('popupImage');
+                popupImg.src = this.src;
+                popup.style.display = 'flex';
+            });
+        });
+
+        // Fechar popup
+        document.querySelector('.photo-popup-close').addEventListener('click', function() {
+            document.getElementById('photoPopup').style.display = 'none';
+        });
+
+        // Fechar popup ao clicar fora da imagem
+        document.getElementById('photoPopup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.display = 'none';
+            }
+        });
+
+        // Gerenciamento de Relatórios
+        const manageReportsBtn = document.getElementById('manageReportsBtn');
+        const manageReportsModal = document.getElementById('manageReportsModal');
+        const closeManageModal = document.getElementById('closeManageModal');
+        const closeManageModalBtn = document.getElementById('closeManageModalBtn');
+        const allReportsList = document.getElementById('allReportsList');
+
+        // Abrir modal de gerenciamento
+        manageReportsBtn.addEventListener('click', () => {
+            loadAllReports();
+            manageReportsModal.classList.remove('hidden');
+        });
+
+        // Fechar modal de gerenciamento
+        function closeManageModalFunc() {
+            manageReportsModal.classList.add('hidden');
+        }
+
+        closeManageModal.addEventListener('click', closeManageModalFunc);
+        closeManageModalBtn.addEventListener('click', closeManageModalFunc);
+
+        // Fechar modal ao clicar fora
+        manageReportsModal.addEventListener('click', (e) => {
+            if (e.target === manageReportsModal) {
+                closeManageModalFunc();
+            }
+        });
+
+        // Função para carregar todos os relatórios na modal
+        function loadAllReports() {
+            const recentReports = document.getElementById('recentReports');
+            const reportItems = recentReports.querySelectorAll('.p-3.border-b');
+            
+            allReportsList.innerHTML = '';
+            
+            if (reportItems.length === 0) {
+                allReportsList.innerHTML = `
+                    <div class="p-6 bg-slate-50 rounded-lg text-center text-slate-500">
+                        <i class="fas fa-info-circle text-2xl mb-3"></i>
+                        <p>Nenhum relatório salvo ainda</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            reportItems.forEach((item, index) => {
+                const reportName = item.querySelector('span')?.textContent || `Relatório ${index + 1}`;
+                const reportData = item.dataset.reportData;
+                
+                const reportCard = document.createElement('div');
+                reportCard.className = 'bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow';
+                reportCard.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-800 mb-1">${reportName}</h4>
+                            <p class="text-sm text-slate-600">Clique para visualizar ou editar</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="edit-report-btn btn btn-primary px-3 py-2 rounded-md text-sm" title="Editar Relatório">
+                                <i class="fas fa-edit mr-1"></i> Editar
+                            </button>
+                            <button class="delete-report-btn btn btn-danger px-3 py-2 rounded-md text-sm" title="Excluir Relatório">
+                                <i class="fas fa-trash mr-1"></i> Excluir
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Armazenar dados do relatório no elemento
+                if (reportData) {
+                    reportCard.dataset.reportData = reportData;
+                }
+                
+                // Adicionar eventos aos botões
+                const editBtn = reportCard.querySelector('.edit-report-btn');
+                const deleteBtn = reportCard.querySelector('.delete-report-btn');
+                
+                editBtn.addEventListener('click', () => {
+                    if (reportData) {
+                        const data = JSON.parse(reportData);
+                        loadReportData(data);
+                        closeManageModalFunc();
+                        
+                        // Rolar para o topo do formulário
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        
+                        // Mostrar mensagem de sucesso
+                        const notification = document.createElement('div');
+                        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fadeIn';
+                        notification.innerHTML = `
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Relatório carregado com sucesso!
+                        `;
+                        document.body.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 3000);
+                    }
+                });
+                
+                deleteBtn.addEventListener('click', () => {
+                    if (confirm('Tem certeza que deseja excluir este relatório? Esta ação não pode ser desfeita.')) {
+                        // Remover da lista de relatórios recentes
+                        item.remove();
+                        
+                        // Remover da modal
+                        reportCard.remove();
+                        
+                        // Verificar se ainda há relatórios
+                        const remainingReports = recentReports.querySelectorAll('.p-3.border-b');
+                        if (remainingReports.length === 0) {
+                            recentReports.innerHTML = `
+                                <div class="p-3 bg-slate-50 rounded-md text-center text-slate-500">
+                                    <i class="fas fa-info-circle mr-2"></i> Nenhum relatório salvo ainda
+                                </div>
+                            `;
+                        }
+                        
+                        // Mostrar mensagem de sucesso
+                        const notification = document.createElement('div');
+                        notification.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fadeIn';
+                        notification.innerHTML = `
+                            <i class="fas fa-trash mr-2"></i>
+                            Relatório excluído com sucesso!
+                        `;
+                        document.body.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            notification.remove();
+                        }, 3000);
+                    }
+                });
+                
+                allReportsList.appendChild(reportCard);
+            });
+        }
+
+        // Lógica das abas
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remover classe active de todos os botões
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.classList.remove('btn-primary');
+                });
+                
+                // Adicionar classe active ao botão clicado
+                this.classList.add('active');
+                
+                // Esconder todos os conteúdos das abas
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.add('hidden'));
+                
+                // Mostrar o conteúdo da aba selecionada
+                const tab = this.getAttribute('data-tab');
+                const targetTab = document.getElementById('tab-' + tab);
+                if (targetTab) {
+                    targetTab.classList.remove('hidden');
+                }
+            });
+        });
+        
+        // Ativar a primeira aba por padrão
+        const firstTab = document.querySelector('.tab-btn[data-tab="dados-gerais"]');
+        if (firstTab) {
+            firstTab.classList.add('active');
+            document.getElementById('tab-dados-gerais').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
